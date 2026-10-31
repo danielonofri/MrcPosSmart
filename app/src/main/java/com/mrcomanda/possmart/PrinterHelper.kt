@@ -34,7 +34,7 @@ object PrinterHelper {
         sb.append("--------------------------------\n")
         sb.append(String.format("TOTAL A PAGAR: $%16.2f\n", total))
         sb.append("--------------------------------\n")
-        sb.append("    ¡Gracias por su visita!     \n\n\n")
+        sb.append("    ¡ Gracias por su visita !     \n\n\n")
 
         return sb.toString()
     }
@@ -149,83 +149,3 @@ object PrinterHelper {
         }.start()
     }
 }
-
-//object PrinterHelper {
-//
-//    fun generarTextoPrecuenta(items: List<ItemFacturaDto>, total: Double, numeroMesa: Int): String {
-//        val sb = StringBuilder()
-//        sb.append("--------------------------------\n")
-//        sb.append("         MR.COMANDA POS         \n")
-//        sb.append("--------------------------------\n")
-//        sb.append("Mesa: $numeroMesa\n")
-//        sb.append("Fecha: ${SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())}\n")
-//        sb.append("--------------------------------\n")
-//        sb.append(String.format("%-20s %3s %7s\n", "DESCRIPCION", "CAN", "PRECIO"))
-//        sb.append("--------------------------------\n")
-//
-//        for (item in items) {
-//            val desc = if (item.descrip.length > 20) item.descrip.substring(0, 20) else item.descrip
-//            val cant = item.cantidad.toInt().toString()
-//            val precio = item.precio.toInt().toString()
-//            sb.append(String.format("%-20s %3s %7s\n", desc, cant, precio))
-//        }
-//
-//        sb.append("--------------------------------\n")
-//        sb.append(String.format("TOTAL A PAGAR: $%16.2f\n", total))
-//        sb.append("--------------------------------\n")
-//        sb.append("    ¡Gracias por su visita!     \n\n\n")
-//
-//        return sb.toString()
-//    }
-//
-//    // Función principal para lanzar la impresión según el dispositivo
-//    fun imprimirPrecuenta(
-//        context: Context,
-//        items: List<ItemFacturaDto>,
-//        total: Double,
-//        numeroMesa: Int,
-//        esSmartPos: Boolean
-//    ) {
-//        val textoTicket = generarTextoPrecuenta(items, total, numeroMesa)
-//
-//        if (esSmartPos) {
-//            // ==========================================
-//            // OPCIÓN A: Impresión nativa en Smart POS
-//            // ==========================================
-//            try {
-//                // Aquí se invoca el método del SDK nativo de Mercado Pago (.aar)
-//                // Ej: com.mercadopago.point.nativesdk.printer.PrinterManager.printText(context, textoTicket)
-//            } catch (e: Exception) {
-//                e.printStackTrace()
-//            }
-//        } else {
-//            // ==========================================
-//            // OPCIÓN B: Impresión externa ESC/POS (Bluetooth/USB)
-//            // ==========================================
-//            enviarAEscPosExterna(textoTicket)
-//        }
-//    }
-//
-//    @android.annotation.SuppressLint("MissingPermission")
-//    private fun enviarAEscPosExterna(texto: String) {
-//        try {
-//            val bluetoothAdapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter()
-//            val macAddress = "02-18-99-0C-00-39" // Dirección MAC exacta obtenida del ticket de prueba[cite: 5]
-//            val device = bluetoothAdapter.getRemoteDevice(macAddress)
-//
-//            val uuid = java.util.UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
-//            val socket = device.createRfcommSocketToServiceRecord(uuid)
-//
-//            bluetoothAdapter.cancelDiscovery()
-//            socket.connect()
-//
-//            val outputStream = socket.outputStream
-//            outputStream.write(texto.toByteArray(Charsets.ISO_8859_1))
-//            outputStream.flush()
-//            outputStream.close()
-//            socket.close()
-//        } catch (e: Exception) {
-//            e.printStackTrace()
-//        }
-//    }
-//}
