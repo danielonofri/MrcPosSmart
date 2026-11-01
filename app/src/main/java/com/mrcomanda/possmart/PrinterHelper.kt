@@ -3,9 +3,6 @@ package com.mrcomanda.possmart
 import android.content.Context
 import com.mrcomanda.possmart.model.ItemFacturaDto
 import com.mrcomanda.possmart.network.AppPreferences
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 object PrinterHelper {
 
