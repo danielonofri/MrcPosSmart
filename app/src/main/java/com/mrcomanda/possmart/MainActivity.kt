@@ -1,9 +1,7 @@
 package com.mrcomanda.possmart
 
 import android.Manifest
-import android.content.Context
 import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -22,6 +20,8 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.mrcomanda.possmart.network.AppPreferences
 import com.mrcomanda.possmart.ui.theme.MesasScreen
+import android.content.Context
+import com.mrcomanda.possmart.ui.theme.CobroDirectoScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,12 +50,16 @@ fun MainContainer() {
     var pantallaActual by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("cuentas") }
     var menuExpanded by remember { mutableStateOf(false) }
 
+    val tituloBarra = when (pantallaActual) {
+        "cuentas" -> "Cuentas"
+        "cobro_libre" -> "Cobro Directo (Point)"
+        else -> "Configuración"
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Text(if (pantallaActual == "cuentas") "Cuentas" else "Configuración")
-                },
+                title = { Text(tituloBarra) },
                 navigationIcon = {
                     Box {
                         IconButton(onClick = { menuExpanded = true }) {
@@ -66,30 +70,17 @@ fun MainContainer() {
                             onDismissRequest = { menuExpanded = false }
                         ) {
                             DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        "CUENTAS",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 16.sp
-                                    )
-                                },
-                                onClick = {
-                                    pantallaActual = "cuentas"
-                                    menuExpanded = false
-                                }
+                                text = { Text("CUENTAS", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
+                                onClick = { pantallaActual = "cuentas"; menuExpanded = false }
+                            )
+                            // Nueva opción de menú para cobro libre
+                            DropdownMenuItem(
+                                text = { Text("COBRO DIRECTO", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
+                                onClick = { pantallaActual = "cobro_libre"; menuExpanded = false }
                             )
                             DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        "CONFIG",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 16.sp
-                                    )
-                                },
-                                onClick = {
-                                    pantallaActual = "config"
-                                    menuExpanded = false
-                                }
+                                text = { Text("CONFIG", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
+                                onClick = { pantallaActual = "config"; menuExpanded = false }
                             )
                         }
                     }
@@ -98,22 +89,84 @@ fun MainContainer() {
         }
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            if (pantallaActual == "cuentas") {
-                MesasScreen()
-            } else {
-                ConfigScreen()
+            when (pantallaActual) {
+                "cuentas" -> MesasScreen()
+                "cobro_libre" -> CobroDirectoScreen()
+                else -> ConfigScreen()
             }
         }
     }
 }
+//fun MainContainer() {
+//    var pantallaActual by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("cuentas") }
+//    var menuExpanded by remember { mutableStateOf(false) }
+//
+//    Scaffold(
+//        topBar = {
+//            TopAppBar(
+//                title = {
+//                    Text(if (pantallaActual == "cuentas") "Cuentas" else "Configuración")
+//                },
+//                navigationIcon = {
+//                    Box {
+//                        IconButton(onClick = { menuExpanded = true }) {
+//                            Text("≡", fontSize = 28.sp, fontWeight = FontWeight.Bold)
+//                        }
+//                        DropdownMenu(
+//                            expanded = menuExpanded,
+//                            onDismissRequest = { menuExpanded = false }
+//                        ) {
+//                            DropdownMenuItem(
+//                                text = {
+//                                    Text(
+//                                        "CUENTAS",
+//                                        fontWeight = FontWeight.Bold,
+//                                        fontSize = 16.sp
+//                                    )
+//                                },
+//                                onClick = {
+//                                    pantallaActual = "cuentas"
+//                                    menuExpanded = false
+//                                }
+//                            )
+//                            DropdownMenuItem(
+//                                text = {
+//                                    Text(
+//                                        "CONFIG",
+//                                        fontWeight = FontWeight.Bold,
+//                                        fontSize = 16.sp
+//                                    )
+//                                },
+//                                onClick = {
+//                                    pantallaActual = "config"
+//                                    menuExpanded = false
+//                                }
+//                            )
+//                        }
+//                    }
+//                }
+//            )
+//        }
+//    ) { paddingValues ->
+//        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+//            if (pantallaActual == "cuentas") {
+//                MesasScreen()
+//            } else {
+//                ConfigScreen()
+//            }
+//        }
+//    }
+//}
 // ==========================================
 // CONFIGURACIÓN Y BLUETOOTH AUTOMÁTICO
 // ==========================================
-
 @Suppress("MissingPermission")
-fun obtenerDispositivosBluetoothVinculados(): Map<String, String> {
-    val bluetoothAdapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter()
+fun obtenerDispositivosBluetoothVinculados(context: Context): Map<String, String> {
     val listaDispositivos = mutableMapOf<String, String>()
+
+    // Obtenemos el adaptador usando el BluetoothManager moderno
+    val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? android.bluetooth.BluetoothManager
+    val bluetoothAdapter = bluetoothManager?.adapter
 
     if (bluetoothAdapter != null && bluetoothAdapter.isEnabled) {
         val emparejados = bluetoothAdapter.bondedDevices
@@ -135,26 +188,24 @@ fun SelectorImpresoraBluetooth(
 ) {
     var expanded by remember { mutableStateOf(false) }
     var dispositivos by remember { mutableStateOf(mapOf<String, String>()) }
-    var nombreSeleccionado by remember { mutableStateOf("Seleccione una impresora") }
+    var nombreSeleccionado by remember { mutableStateOf("Elija una impresora") }
 
     val launcherPermiso = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { concedido: Boolean ->
         if (concedido) {
-            dispositivos = obtenerDispositivosBluetoothVinculados()
+            dispositivos = obtenerDispositivosBluetoothVinculados(context)
         }
     }
 
     LaunchedEffect(Unit) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
-                dispositivos = obtenerDispositivosBluetoothVinculados()
-            } else {
-                launcherPermiso.launch(Manifest.permission.BLUETOOTH_CONNECT)
-            }
+
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
+            dispositivos = obtenerDispositivosBluetoothVinculados(context)
         } else {
-            dispositivos = obtenerDispositivosBluetoothVinculados()
+            launcherPermiso.launch(Manifest.permission.BLUETOOTH_CONNECT)
         }
+
 
         val encontrado = dispositivos.entries.find { it.value == macSeleccionadaActual }
         if (encontrado != null) {
@@ -173,7 +224,8 @@ fun SelectorImpresoraBluetooth(
             readOnly = true,
             label = { Text("Impresora Bluetooth Externa") },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier.menuAnchor().fillMaxWidth()
+            //modifier = Modifier.menuAnchor().fillMaxWidth()
+            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
         )
 
         ExposedDropdownMenu(

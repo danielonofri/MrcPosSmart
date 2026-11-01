@@ -6,5 +6,6 @@ data class Mesa(
     val estado: String,
     val nomMozo: String,
     val total: Double,
-    val mdescuen: Double
+    val mdescuen: Double,
+    val cerrando: Boolean,
 )
