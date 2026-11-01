@@ -1,5 +1,6 @@
 package com.mrcomanda.possmart.ui.theme
 
+import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -59,6 +60,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.draw.alpha
+import com.mrcomanda.possmart.network.obtenerAccessTokenDiario
 
 @Composable
 fun MesasScreen() {
@@ -208,6 +210,7 @@ fun DetalleMesaScreen(mesa: Mesa, onVolver: () -> Unit) {
 
         result.data?.extras?.let { bundle ->
             for (key in bundle.keySet()) {
+                @Suppress("DEPRECATION")
                 val value = bundle.get(key)
                 android.util.Log.d("MrComandaLog", "   Bundle extra -> $key : $value")
             }
@@ -382,17 +385,43 @@ fun DetalleMesaScreen(mesa: Mesa, onVolver: () -> Unit) {
                                             onClick = {
                                                 val guidReferencia = java.util.UUID.randomUUID().toString()
                                                 android.util.Log.d("MrComandaLog", "-> Iniciando cobro | Mesa: ${mesa.mesa} | Monto: $$totalCalculado | Ref (GUID): $guidReferencia")
-                                                MercadoPagoPaymentManager.iniciarCobro(
-                                                    launcher = cobroLauncher,
-                                                    monto = totalCalculado,
-                                                    externalReference = guidReferencia
-                                                )
+
+                                                coroutineScope.launch {
+                                                    try {
+                                                        var accessTokenOAuth: String? = null
+
+                                                        // 1. Si OAuth está activo, obtenemos el token diario mediante el repositorio
+                                                        if (AppPreferences.oauth) {
+                                                            android.util.Log.d("MrComandaLog", "-> OAuth activo: Solicitando token diario...")
+                                                            accessTokenOAuth = obtenerAccessTokenDiario(RetrofitClient.apiService)
+                                                        }
+
+                                                        // 2. Preparamos el Intent para la Point SmartApp de Mercado Pago
+                                                        val intent = Intent("com.mercadopago.pos.action.PAY").apply {
+                                                            putExtra("amount", totalCalculado) // Monto total (Double o Long según requiera tu SDK)
+                                                            putExtra("external_reference", guidReferencia)
+
+                                                            // Si tienes el token OAuth disponible, se lo inyectamos al Intent
+                                                            if (!accessTokenOAuth.isNullOrBlank()) {
+                                                                putExtra("access_token", accessTokenOAuth)
+                                                            }
+                                                        }
+
+                                                        // 3. Lanzamos la actividad esperando el resultado con el launcher
+                                                        cobroLauncher.launch(intent)
+
+                                                    } catch (e: Exception) {
+                                                        android.util.Log.e("MrComandaLog", "Error al preparar el cobro: ${e.localizedMessage}")
+                                                        android.widget.Toast.makeText(context, "Error al iniciar cobro: ${e.localizedMessage}", android.widget.Toast.LENGTH_LONG).show()
+                                                    }
+                                                }
                                             },
                                             modifier = Modifier.weight(1f),
                                             enabled = !mesa.cerrando
                                         ) {
                                             Text(if (mesa.cerrando) "En Proceso" else "Cobrar", fontSize = 13.sp)
                                         }
+
                                     }
                                 }
                             }

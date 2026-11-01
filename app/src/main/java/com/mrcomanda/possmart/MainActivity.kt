@@ -255,72 +255,80 @@ fun SelectorImpresoraBluetooth(
 
 @Composable
 fun ConfigScreen() {
-    var urlTexto by remember { mutableStateOf(AppPreferences.baseUrl) }
-    var keyTexto by remember { mutableStateOf(AppPreferences.apiKey) }
-    var macTexto by remember { mutableStateOf(AppPreferences.macImpresora) }
-    var smartPosCheck by remember { mutableStateOf(AppPreferences.esSmartPos) }
-    var mensajeGuardado by remember { mutableStateOf(false) }
-    val context = LocalContext.current
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        OutlinedTextField(
-            value = urlTexto,
-            onValueChange = { urlTexto = it },
-            label = { Text("Base URL (ej: https://192.168.1.50:5006/)") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        OutlinedTextField(
-            value = keyTexto,
-            onValueChange = { keyTexto = it },
-            label = { Text("X-API-Key") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        SelectorImpresoraBluetooth(
-            context = context,
-            macSeleccionadaActual = macTexto,
-            onMacGuardada = { nuevaMac ->
-                macTexto = nuevaMac
-            }
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Checkbox(
-                checked = smartPosCheck,
-                onCheckedChange = { smartPosCheck = it }
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("¿Ejecutando en Smart POS físico?")
-        }
-
-        Button(
-            onClick = {
-                AppPreferences.baseUrl = urlTexto.trim()
-                AppPreferences.apiKey = keyTexto.trim()
-                AppPreferences.macImpresora = macTexto.trim()
-                AppPreferences.esSmartPos = smartPosCheck
-                mensajeGuardado = true
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Guardar Cambios")
-        }
-
-        if (mensajeGuardado) {
-            Text(
-                text = "¡Configuración guardada con éxito!",
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
+    // Reutilizamos directamente la pantalla completa y prolija que diseñamos
+    SettingsScreen(
+        onBackClick = {}
+    )
 }
+
+//@Composable
+//fun ConfigScreen() {
+//    var urlTexto by remember { mutableStateOf(AppPreferences.baseUrl) }
+//    var keyTexto by remember { mutableStateOf(AppPreferences.apiKey) }
+//    var macTexto by remember { mutableStateOf(AppPreferences.macImpresora) }
+//    var smartPosCheck by remember { mutableStateOf(AppPreferences.esSmartPos) }
+//    var mensajeGuardado by remember { mutableStateOf(false) }
+//    val context = LocalContext.current
+//
+//    Column(
+//        modifier = Modifier
+//            .fillMaxSize()
+//            .padding(16.dp),
+//        verticalArrangement = Arrangement.spacedBy(16.dp)
+//    ) {
+//        OutlinedTextField(
+//            value = urlTexto,
+//            onValueChange = { urlTexto = it },
+//            label = { Text("Base URL (ej: https://192.168.1.50:5006/)") },
+//            modifier = Modifier.fillMaxWidth()
+//        )
+//
+//        OutlinedTextField(
+//            value = keyTexto,
+//            onValueChange = { keyTexto = it },
+//            label = { Text("X-API-Key") },
+//            modifier = Modifier.fillMaxWidth()
+//        )
+//
+//        SelectorImpresoraBluetooth(
+//            context = context,
+//            macSeleccionadaActual = macTexto,
+//            onMacGuardada = { nuevaMac ->
+//                macTexto = nuevaMac
+//            }
+//        )
+//
+//        Row(
+//            modifier = Modifier.fillMaxWidth(),
+//            verticalAlignment = Alignment.CenterVertically
+//        ) {
+//            Checkbox(
+//                checked = smartPosCheck,
+//                onCheckedChange = { smartPosCheck = it }
+//            )
+//            Spacer(modifier = Modifier.width(8.dp))
+//            Text("¿Ejecutando en Smart POS físico?")
+//        }
+//
+//        Button(
+//            onClick = {
+//                AppPreferences.baseUrl = urlTexto.trim()
+//                AppPreferences.apiKey = keyTexto.trim()
+//                AppPreferences.macImpresora = macTexto.trim()
+//                AppPreferences.esSmartPos = smartPosCheck
+//                mensajeGuardado = true
+//            },
+//            modifier = Modifier.fillMaxWidth()
+//        ) {
+//            Text("Guardar Cambios")
+//        }
+//
+//        if (mensajeGuardado) {
+//            Text(
+//                text = "¡Configuración guardada con éxito!",
+//                color = MaterialTheme.colorScheme.primary,
+//                fontWeight = FontWeight.Bold
+//            )
+//        }
+//    }
+//}
