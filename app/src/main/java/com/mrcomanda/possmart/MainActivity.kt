@@ -1,6 +1,7 @@
 package com.mrcomanda.possmart
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -8,20 +9,38 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.mrcomanda.possmart.network.AppPreferences
-import com.mrcomanda.possmart.ui.theme.MesasScreen
-import android.content.Context
 import com.mrcomanda.possmart.ui.theme.CobroDirectoScreen
+import com.mrcomanda.possmart.ui.theme.MesasScreen
+import com.mrcomanda.possmart.ui.theme.OrdenesDiaScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,8 +70,9 @@ fun MainContainer() {
     var menuExpanded by remember { mutableStateOf(false) }
 
     val tituloBarra = when (pantallaActual) {
-        "cuentas" -> "Cuentas"
+        "cuentas" -> "Cuentas abiertas"
         "cobro_libre" -> "Cobro Directo (Point)"
+        "ordenes_dia" -> "Órdenes del Día"
         else -> "Configuración"
     }
 
@@ -70,7 +90,7 @@ fun MainContainer() {
                             onDismissRequest = { menuExpanded = false }
                         ) {
                             DropdownMenuItem(
-                                text = { Text("CUENTAS", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
+                                text = { Text("CUENTAS ABIERTAS", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
                                 onClick = { pantallaActual = "cuentas"; menuExpanded = false }
                             )
                             // Nueva opción de menú para cobro libre
@@ -79,9 +99,15 @@ fun MainContainer() {
                                 onClick = { pantallaActual = "cobro_libre"; menuExpanded = false }
                             )
                             DropdownMenuItem(
-                                text = { Text("CONFIG", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
+                                text = { Text("CONFIGURACIONES", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
                                 onClick = { pantallaActual = "config"; menuExpanded = false }
                             )
+                            if (AppPreferences.oauth) {
+                                DropdownMenuItem(
+                                    text = { Text("ÓRDENES DEL DÍA", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
+                                    onClick = { pantallaActual = "ordenes_dia"; menuExpanded = false }
+                                )
+                            }
                         }
                     }
                 }
@@ -92,6 +118,7 @@ fun MainContainer() {
             when (pantallaActual) {
                 "cuentas" -> MesasScreen()
                 "cobro_libre" -> CobroDirectoScreen()
+                "ordenes_dia" -> OrdenesDiaScreen() // (Esta pantalla la crearemos a continuación)
                 else -> ConfigScreen()
             }
         }
