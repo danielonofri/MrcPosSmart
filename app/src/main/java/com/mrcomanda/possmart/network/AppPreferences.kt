@@ -18,7 +18,8 @@ object AppPreferences {
     private const val KEY_URL_TOKEN_MP = "url_token_mp"
     private const val KEY_ACCESS_TOKEN_MP = "access_token_mp"
     private const val KEY_FECHA_TOKEN_MP = "fecha_token_mp"
-
+    private const val KEY_DEVICE = "device"
+    private const val KEY_PAIS = "pais"
     private lateinit var preferences: SharedPreferences
 
     fun init(context: Context) {
@@ -73,4 +74,12 @@ object AppPreferences {
     var fechaTokenMp: String
         get() = preferences.getString(KEY_FECHA_TOKEN_MP, "") ?: ""
         set(value) = preferences.edit { putString(KEY_FECHA_TOKEN_MP, value) }
+
+    var device: String
+        get() = preferences.getString(KEY_DEVICE, "NEWLAND_N950__N950NCBB02072967") ?: "NEWLAND_N950__N950NCBB02072967"
+        set(value) = preferences.edit { putString(KEY_DEVICE, value) }
+
+    var pais: String
+        get() = preferences.getString(KEY_PAIS, "Chile") ?: "Chile"
+        set(value) = preferences.edit { putString(KEY_PAIS, value) }
 }
