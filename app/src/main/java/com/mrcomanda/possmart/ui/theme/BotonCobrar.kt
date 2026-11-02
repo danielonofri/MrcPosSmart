@@ -69,7 +69,7 @@ fun BotonCobrar(
                           "transactions": {
                             "payments": [
                               {
-                                "amount": $montoJsonSegment
+                                "amount": "$montoJsonSegment"
                               }
                             ]
                           },

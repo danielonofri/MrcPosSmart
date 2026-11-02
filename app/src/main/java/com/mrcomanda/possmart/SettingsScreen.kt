@@ -10,7 +10,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.mrcomanda.possmart.network.AppPreferences
+import com.mrcomanda.possmart.network.RetrofitClient
+import com.mrcomanda.possmart.network.obtenerAccessTokenDiario
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -18,6 +22,7 @@ fun SettingsScreen(
     onBackClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
 
     // Estados locales sincronizados con AppPreferences
@@ -32,6 +37,14 @@ fun SettingsScreen(
     var cuit by remember { mutableStateOf(AppPreferences.cuit) }
     var tokenMrc by remember { mutableStateOf(AppPreferences.tokenMrc) }
     var urlTokenMp by remember { mutableStateOf(AppPreferences.urlTokenMp) }
+
+    // Nuevos estados para Device y País
+    var device by remember { mutableStateOf(AppPreferences.device) }
+    var pais by remember { mutableStateOf(AppPreferences.pais) }
+
+    // Estados para la prueba de token
+    var mensajePrueba by remember { mutableStateOf("") }
+    var testExitoso by remember { mutableStateOf(false) }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -221,6 +234,7 @@ fun SettingsScreen(
                             singleLine = true,
                             visualTransformation = PasswordVisualTransformation()
                         )
+
                         OutlinedTextField(
                             value = urlTokenMp,
                             onValueChange = { valor ->
@@ -231,11 +245,96 @@ fun SettingsScreen(
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true
                         )
+
+                        // Nuevo campo: Device (Terminal ID)
+                        OutlinedTextField(
+                            value = device,
+                            onValueChange = { valor ->
+                                device = valor
+                                AppPreferences.device = valor
+                            },
+                            label = { Text("Terminal ID (Device)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+
+                        // Selector de País (Chile / Argentina)
+                        Text(
+                            text = "País de operación",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = {
+                                    pais = "Chile"
+                                    AppPreferences.pais = "Chile"
+                                },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (pais == "Chile") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
+                                )
+                            ) {
+                                Text("Chile")
+                            }
+
+                            Button(
+                                onClick = {
+                                    pais = "Argentina"
+                                    AppPreferences.pais = "Argentina"
+                                },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (pais == "Argentina") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
+                                )
+                            ) {
+                                Text("Argentina")
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Botón para probar la obtención del token
+                        Button(
+                            onClick = {
+                                coroutineScope.launch {
+                                    mensajePrueba = "Solicitando token diario..."
+                                    try {
+                                        val tokenResult = obtenerAccessTokenDiario(RetrofitClient.apiService)
+                                        if (tokenResult.isNotBlank()) {
+                                            testExitoso = true
+                                            mensajePrueba = "¡Éxito! Token obtenido correctamente (Longitud: ${tokenResult.length})"
+                                        } else {
+                                            testExitoso = false
+                                            mensajePrueba = "Error: El servidor respondió pero el token llegó vacío."
+                                        }
+                                    } catch (e: Exception) {
+                                        testExitoso = false
+                                        mensajePrueba = "Error de conexión: ${e.localizedMessage}"
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Probar Conexión y Token MRC")
+                        }
+
+                        // Mensaje de resultado de la prueba
+                        if (mensajePrueba.isNotBlank()) {
+                            Text(
+                                text = mensajePrueba,
+                                color = if (testExitoso) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                                fontSize = 13.sp
+                            )
+                        }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            // Espacio extra al final para mayor comodidad visual con el teclado abierto
+            Spacer(modifier = Modifier.height(48.dp))
         }
     }
 }
