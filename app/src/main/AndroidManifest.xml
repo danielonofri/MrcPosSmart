@@ -15,8 +15,11 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.MrComandaPosSmar">
+        <meta-data
+            android:name="com.mercadolibre.android.sdk.CLIENT_ID"
+            android:value="8398295950239706" />
         <activity
-            android:name=".MainActivity"
+            android:name="MainActivity"
             android:exported="true"
             android:theme="@style/Theme.MrComandaPosSmar"
             android:windowSoftInputMode="adjustResize">

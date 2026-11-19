@@ -41,13 +41,16 @@ import com.mrcomanda.possmart.network.AppPreferences
 import com.mrcomanda.possmart.ui.theme.CobroDirectoScreen
 import com.mrcomanda.possmart.ui.theme.MesasScreen
 import com.mrcomanda.possmart.ui.theme.OrdenesDiaScreen
-
+import com.mercadolibre.android.point_integration_sdk.nativesdk.MPManager
+import com.mercadolibre.android.point_integration_sdk.nativesdk.configurable.MPConfigBuilder
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         AppPreferences.init(applicationContext)
         enableEdgeToEdge()
-
+        val mpConfig = MPConfigBuilder(application,"8398295950239706").build()
+        MPManager.initialize(application, mpConfig)
+        android.util.Log.d("MrComandaLog", "-> MPManager inicializado con clientId 8398295950239706")
         setContent {
             MaterialTheme(
                 colorScheme = lightColorScheme()

@@ -1,8 +1,5 @@
 package com.mrcomanda.possmart.ui.theme
 
-import android.content.Intent
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -47,10 +45,18 @@ import com.mrcomanda.possmart.PrinterHelper
 import com.mrcomanda.possmart.model.ItemFacturaDto
 import com.mrcomanda.possmart.model.Mesa
 import com.mrcomanda.possmart.network.AppPreferences
-import com.mrcomanda.possmart.network.MercadoPagoPaymentManager
 import com.mrcomanda.possmart.network.RetrofitClient
-import com.mrcomanda.possmart.network.obtenerAccessTokenDiario
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.res.painterResource
+import com.mrcomanda.possmart.R
+private data class DialogoCobroEstado(
+    val titulo: String,
+    val mensaje: String,
+    val paymentIdAprobado: String? = null
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,55 +65,9 @@ fun DetalleMesaScreen(mesa: Mesa, onVolver: () -> Unit) {
     var itemsFactura by remember { mutableStateOf<List<ItemFacturaDto>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMensaje by remember { mutableStateOf<String?>(null) }
+    var dialogoCobro by remember { mutableStateOf<DialogoCobroEstado?>(null) }
+    var enviandoPagoApi by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
-
-    val cobroLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        android.util.Log.d("MrComandaLog", "<- Resultado recibido del SDK | resultCode: ${result.resultCode} (RESULT_OK = -1, RESULT_CANCELED = 0)")
-
-        result.data?.extras?.let { bundle ->
-            for (key in bundle.keySet()) {
-                @Suppress("DEPRECATION")
-                val value = bundle.get(key)
-                android.util.Log.d("MrComandaLog", "   Bundle extra -> $key : $value")
-            }
-        }
-
-        MercadoPagoPaymentManager.procesarResultado(
-            resultCode = result.resultCode,
-            data = result.data,
-            onAprobado = { paymentId ->
-                android.util.Log.d("MrComandaLog", "-> Pago Aprobado con ID: $paymentId")
-                android.widget.Toast.makeText(context, "¡Pago Aprobado! ID: $paymentId", android.widget.Toast.LENGTH_LONG).show()
-
-                // Llamada al backend para registrar el pago con la API Key configurada
-                coroutineScope.launch {
-                    try {
-                        RetrofitClient.apiService.postRegistrarPago(
-                            numeroMesa = mesa.mesa,
-                            apiKey = AppPreferences.apiKey
-                        )
-                        android.widget.Toast.makeText(context, "Pago registrado en el servidor correctamente", android.widget.Toast.LENGTH_SHORT).show()
-                    } catch (e: Exception) {
-                        android.widget.Toast.makeText(context, "Error al registrar pago: ${e.localizedMessage}", android.widget.Toast.LENGTH_LONG).show()
-                    }
-                }
-
-                // Impresión del ticket de pre-cuenta / comprobante
-                PrinterHelper.imprimirPrecuenta(
-                    context = context,
-                    items = itemsFactura,
-                    total = mesa.total,
-                    numeroMesa = mesa.mesa
-                )
-            },
-            onRechazadoOMas = { motivo ->
-                android.util.Log.d("MrComandaLog", "-> Pago Rechazado / Cancelado / Error. Motivo: $motivo")
-                android.widget.Toast.makeText(context, "Respuesta SDK: $motivo", android.widget.Toast.LENGTH_LONG).show()
-            }
-        )
-    }
 
     LaunchedEffect(mesa.mesa) {
         try {
@@ -220,13 +180,15 @@ fun DetalleMesaScreen(mesa: Mesa, onVolver: () -> Unit) {
                                     }
 
                                     Spacer(modifier = Modifier.height(12.dp))
-
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
+
                                         OutlinedButton(
                                             onClick = {
+                                                android.util.Log.d("MrComandaLog", "-> [Pre-cuenta BT] Clic en mesa ${mesa.mesa}")
                                                 PrinterHelper.imprimirPrecuenta(
                                                     context = context,
                                                     items = itemsFactura,
@@ -234,22 +196,145 @@ fun DetalleMesaScreen(mesa: Mesa, onVolver: () -> Unit) {
                                                     numeroMesa = mesa.mesa
                                                 )
                                             },
+                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                                             modifier = Modifier.weight(1f)
                                         ) {
-                                            Text("Pre-cuenta", fontSize = 13.sp)
+                                            Image(
+                                                painter = painterResource(id = R.drawable.ic_precuenta_bt),
+                                                contentDescription = "Pre-cuenta Bluetooth",
+                                                modifier = Modifier.size(22.dp)
+                                            )
                                         }
 
-                                        BotonCobrar(
-                                            mesa = mesa,
-                                            totalCalculado = totalCalculado,
-                                            cobroLauncher = cobroLauncher,
+                                        OutlinedButton(
+                                            onClick = {
+                                                android.util.Log.d("MrComandaLog", "-> [Pre-cuenta Integrada] Clic en mesa ${mesa.mesa}")
+                                                PrinterHelper.imprimirPrecuentaPrinterIntegrada(
+                                                    context = context,
+                                                    items = itemsFactura,
+                                                    total = totalCalculado,
+                                                    numeroMesa = mesa.mesa,
+                                                    leyendaExtra = if (mesa.cerrando) "ESTADO: COBRADA" else null
+                                                )
+                                            },
+                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                                             modifier = Modifier.weight(1f)
-                                        )
+                                        ) {
+                                            Image(
+                                                painter = painterResource(id = R.drawable.ic_precuenta_pos),
+                                                contentDescription = "Pre-cuenta Integrada",
+                                                modifier = Modifier.size(22.dp)
+                                            )
+                                        }
 
+                                        // 3. Cobrar / Cobrada
+                                        if (mesa.cerrando) {
+                                            OutlinedButton(
+                                                onClick = {},
+                                                enabled = false,
+                                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                                                modifier = Modifier.weight(1.3f)
+                                            ) {
+                                                Text("Cobrada", fontSize = 13.sp, color = Color(0xFF2E7D32))
+                                            }
+                                        } else {
+                                            BotonCobrar(
+                                                mesa = mesa,
+                                                totalCalculado = totalCalculado,
+                                                onAprobado = { paymentId ->
+                                                    android.util.Log.d("MrComandaLog", "-> Pago Aprobado con ID: $paymentId (esperando OK)")
+                                                    dialogoCobro = DialogoCobroEstado(
+                                                        titulo = "Pago aprobado",
+                                                        mensaje = "Cobro aprobado (ID: $paymentId).\nPresione OK para registrar el pago en el servidor y cerrar la mesa.",
+                                                        paymentIdAprobado = paymentId
+                                                    )
+                                                },
+                                                onRechazadoOMas = { motivo ->
+                                                    android.util.Log.d("MrComandaLog", "-> Pago Rechazado / Cancelado / Error. Motivo: $motivo")
+                                                    dialogoCobro = DialogoCobroEstado(
+                                                        titulo = "Error en el pago",
+                                                        mensaje = motivo,
+                                                        paymentIdAprobado = null
+                                                    )
+                                                },
+                                                modifier = Modifier.weight(1.3f)
+                                            )
+                                        }
                                     }
                                 }
                             }
                             Spacer(modifier = Modifier.height(24.dp))
+                        }
+                    }
+                }
+            }
+
+            val dialogo = dialogoCobro
+            if (dialogo != null) {
+                AlertDialog(
+                    onDismissRequest = {
+                        if (dialogo.paymentIdAprobado == null) {
+                            dialogoCobro = null
+                        }
+                    },
+                    title = { Text(dialogo.titulo, fontWeight = FontWeight.Bold) },
+                    text = { Text(dialogo.mensaje) },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                val idPago = dialogo.paymentIdAprobado
+                                dialogoCobro = null
+
+                                if (idPago != null) {
+                                    coroutineScope.launch {
+                                        enviandoPagoApi = true
+                                        try {
+                                            RetrofitClient.apiService.postRegistrarPago(
+                                                numeroMesa = mesa.mesa,
+                                                apiKey = AppPreferences.apiKey
+                                            )
+                                            PrinterHelper.imprimirPrecuenta(
+                                                context = context,
+                                                items = itemsFactura,
+                                                total = totalCalculado,
+                                                numeroMesa = mesa.mesa
+                                            )
+                                            enviandoPagoApi = false
+                                            onVolver()
+                                        } catch (e: Exception) {
+                                            enviandoPagoApi = false
+                                            dialogoCobro = DialogoCobroEstado(
+                                                titulo = "Error al registrar en API",
+                                                mensaje = "Pago aprobado (ID: $idPago), pero falló el envío al servidor:\n${e.localizedMessage ?: e.message}",
+                                                paymentIdAprobado = null
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        ) {
+                            Text("OK")
+                        }
+                    }
+                )
+            }
+
+            if (enviandoPagoApi) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        tonalElevation = 8.dp
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(20.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            CircularProgressIndicator()
+                            Text("Registrando pago en servidor...")
                         }
                     }
                 }

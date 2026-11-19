@@ -56,6 +56,6 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
     implementation(libs.kotlinx.coroutines.android)
-    implementation(files("libs/nativesdk-7.2.0.aar"))
+    implementation(files("libs/nativesdk-7.0.0.aar"))
     //androidTestImplementation(libs.androidx.ui.test.junit4)
 }

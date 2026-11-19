@@ -16,16 +16,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mrcomanda.possmart.PrinterHelper
 import com.mrcomanda.possmart.R
 import com.mrcomanda.possmart.model.Mesa
 import com.mrcomanda.possmart.network.AppPreferences
 import com.mrcomanda.possmart.network.RetrofitClient
-import androidx.compose.runtime.mutableIntStateOf
 
 @Composable
 fun MesasScreen() {
@@ -34,12 +35,18 @@ fun MesasScreen() {
     var isLoading by remember { mutableStateOf(true) }
     var errorMensaje by remember { mutableStateOf<String?>(null) }
     var triggerReintento by remember { mutableIntStateOf(0) }
+    val context = LocalContext.current
+    val esquinaCinta = RoundedCornerShape(4.dp)
 
     LaunchedEffect(triggerReintento) {
         try {
             isLoading = true
             errorMensaje = null
             listaMesas = RetrofitClient.apiService.getMesasAbiertas(apiKey = AppPreferences.apiKey)
+            android.util.Log.d(
+                "MrComandaLog",
+                "Mesas recibidas: " + listaMesas.joinToString { "mesa=${it.mesa}/cerrando=${it.cerrando}" }
+            )
         } catch (e: Exception) {
             errorMensaje = e.localizedMessage ?: "Error desconocido de red"
         } finally {
@@ -51,7 +58,10 @@ fun MesasScreen() {
     if (mesaActual != null) {
         DetalleMesaScreen(
             mesa = mesaActual,
-            onVolver = { mesaSeleccionada = null }
+            onVolver = {
+                mesaSeleccionada = null
+                triggerReintento++
+            }
         )
         return
     }
@@ -80,7 +90,6 @@ fun MesasScreen() {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             }
             errorMensaje != null -> {
-                // Pantalla amigable de desconexión de red / servidor
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -113,7 +122,6 @@ fun MesasScreen() {
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Opcional colapsable con el detalle técnico exacto para depuración
                     SelectionContainer {
                         Text(
                             text = "Detalle: $errorMensaje",
@@ -125,9 +133,9 @@ fun MesasScreen() {
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Botón para reintentar la conexión limpiamente
                     Button(
                         onClick = { triggerReintento++ },
+                        shape = esquinaCinta,
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE65100))
                     ) {
                         Text("Reintentar Conexión", color = Color.White, fontWeight = FontWeight.Bold)
@@ -135,64 +143,113 @@ fun MesasScreen() {
                 }
             }
             else -> {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(3),
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(listaMesas) { mesa ->
-                        val colorContenedor = if (mesa.cerrando) Color(0xFFFFCDD2) else Color(0xFFFFE0B2)
-
-                        Card(
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Cinta superior de todo el ancho con botón "Imprimir mesas"
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
+                        shape = esquinaCinta,
+                        color = Color(0xFFF3F4F6),
+                        border = BorderStroke(1.dp, Color(0xFFD0D5DD))
+                    ) {
+                        Row(
                             modifier = Modifier
-                                .height(90.dp)
-                                .clickable { mesaSeleccionada = mesa },
-                            shape = RoundedCornerShape(8.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = colorContenedor
-                            )
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(modifier = Modifier.fillMaxSize()) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(8.dp),
-                                    verticalArrangement = Arrangement.Center,
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Text(
-                                        text = "Cuenta ${mesa.mesa}",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 15.sp
-                                    )
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    Text(
-                                        text = "$${mesa.total.toInt()}",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 14.sp,
-                                        color = Color(0xFFE65100)
-                                    )
-                                }
+                            Text(
+                                text = "Mesas: ${listaMesas.size}",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = Color(0xFF1F2937)
+                            )
 
-                                if (mesa.cerrando) {
-                                    Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center
+                            Button(
+                                onClick = {
+                                    android.util.Log.d("MrComandaLog", "-> [Imprimir Mesas Integrada] cantidad=${listaMesas.size}")
+                                    PrinterHelper.imprimirMesasAbiertasPrinterIntegrada(
+                                        context = context,
+                                        mesas = listaMesas
+                                    )
+                                },
+                                enabled = listaMesas.isNotEmpty(),
+                                shape = esquinaCinta,
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                modifier = Modifier.height(38.dp)
+                            ) {
+                                Text(
+                                    text = "Imprimir mesas",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    }
+
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(3),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(listaMesas) { mesa ->
+                            val colorContenedor = if (mesa.cerrando) Color(0xFFC8E6C9) else Color(0xFFFFE0B2)
+
+                            Card(
+                                modifier = Modifier
+                                    .height(90.dp)
+                                    .clickable { mesaSeleccionada = mesa },
+                                shape = RoundedCornerShape(6.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = colorContenedor
+                                )
+                            ) {
+                                Box(modifier = Modifier.fillMaxSize()) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(8.dp),
+                                        verticalArrangement = Arrangement.Center,
+                                        horizontalAlignment = Alignment.CenterHorizontally
                                     ) {
-                                        Surface(
-                                            color = Color.Red.copy(alpha = 0.15f),
-                                            shape = RoundedCornerShape(4.dp),
-                                            border = BorderStroke(1.5.dp, Color.Red.copy(alpha = 0.7f)),
-                                            modifier = Modifier.graphicsLayer(rotationZ = -12f)
+                                        Text(
+                                            text = "${mesa.mesa}",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 15.sp
+                                        )
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Text(
+                                            text = "$${mesa.total.toInt()}",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp,
+                                            color = if (mesa.cerrando) Color(0xFF1B5E20) else Color(0xFFE65100)
+                                        )
+                                    }
+
+                                    if (mesa.cerrando) {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center
                                         ) {
-                                            Text(
-                                                text = " $ PROCESANDO ",
-                                                color = Color.Red.copy(alpha = 0.9f),
-                                                fontWeight = FontWeight.ExtraBold,
-                                                fontSize = 12.sp,
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                            )
+                                            Surface(
+                                                color = Color(0xFF2E7D32).copy(alpha = 0.18f),
+                                                shape = RoundedCornerShape(4.dp),
+                                                border = BorderStroke(1.5.dp, Color(0xFF2E7D32).copy(alpha = 0.8f)),
+                                                modifier = Modifier.graphicsLayer(rotationZ = -12f)
+                                            ) {
+                                                Text(
+                                                    text = " COBRADA ",
+                                                    color = Color(0xFF1B5E20),
+                                                    fontWeight = FontWeight.ExtraBold,
+                                                    fontSize = 12.sp,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                )
+                                            }
                                         }
                                     }
                                 }

@@ -1,55 +1,45 @@
 package com.mrcomanda.possmart.network
 
-import android.app.Activity
-import android.content.Intent
-import androidx.activity.result.ActivityResultLauncher
+import android.util.Log
+import com.mercadolibre.android.point_integration_sdk.nativesdk.MPManager
+import com.mercadolibre.android.point_integration_sdk.nativesdk.payment.data.PaymentFlowRequestData
+import com.mercadolibre.android.point_integration_sdk.nativesdk.payment.data.PaymentTransactionMetadata
 
 object MercadoPagoPaymentManager {
 
-    /**
-     * Prepara y lanza la intención de pago hacia el Smart POS.
-     * @param launcher El ActivityResultLauncher encargado de abrir la pasarela y recibir el callback.
-     * @param monto El total a cobrar de la cuenta.
-     * @param externalReference Identificador único de la transacción en tu sistema (ej: "CUENTA_6").
-     */
+    private const val TAG = "MrComandaLog"
+
     fun iniciarCobro(
-        launcher: ActivityResultLauncher<Intent>,
         monto: Double,
-        externalReference: String
+        externalReference: String,
+        onAprobado: (paymentId: String) -> Unit,
+        onRechazadoOMas: (motivo: String) -> Unit
     ) {
         try {
-            // Intent estándar de integración para terminales Smart POS nativas
-            val intent = Intent("com.mercadopago.pos.action.PAY").apply {
-                putExtra("amount", monto)
-                putExtra("external_reference", externalReference)
+            val requestData = PaymentFlowRequestData(
+                amount = monto,
+                paymentTransactionMetadata = PaymentTransactionMetadata(
+                    externalReference = externalReference
+                )
+            )
+
+            MPManager.paymentFlow.launchPaymentFlow(requestData) { response ->
+                Log.d(TAG, "<- Respuesta SDK: $response")
+
+                val statusName = response.status?.toString()?.uppercase()
+                val data = response.data
+                val sinError = response.error == null && data?.paymentStatusError.isNullOrEmpty()
+                val idPago = data?.paymentReference ?: externalReference
+
+                if (statusName == "SUCCESS" && sinError) {
+                    onAprobado(idPago)
+                } else {
+                    onRechazadoOMas("Estado: ${response.status} | Error: ${response.error} | SubError: ${data?.paymentStatusError}")
+                }
             }
-            launcher.launch(intent)
         } catch (e: Exception) {
-            e.printStackTrace()
-            // Acá podés manejar si la terminal no tiene instalado el servicio o lanza error
-        }
-    }
-
-    /**
-     * Procesa la respuesta devuelta por la terminal tras finalizar el flujo de pago.
-     */
-    fun procesarResultado(
-        resultCode: Int,
-        data: Intent?,
-        onAprobado: (paymentId: String) -> Unit,     // <-- Con -> y nombre de parámetro
-        onRechazadoOMas: (motivo: String) -> Unit  // <-- Con -> y nombre de parámetro
-    ) {
-        if (resultCode == Activity.RESULT_OK) {
-            val paymentId = data?.getStringExtra("payment_id") ?: "SIN_ID"
-            val status = data?.getStringExtra("status") ?: "approved"
-
-            if (status.equals("approved", ignoreCase = true)) {
-                onAprobado(paymentId)
-            } else {
-                onRechazadoOMas("Pago no aprobado. Estado: $status")
-            }
-        } else {
-            onRechazadoOMas("Transacción cancelada por el usuario o la terminal.")
+            Log.e(TAG, "Error al iniciar cobro con SDK", e)
+            onRechazadoOMas("Error al iniciar cobro: ${e.localizedMessage ?: e.message}")
         }
     }
 }

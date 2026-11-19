@@ -3,7 +3,7 @@ package com.mrcomanda.possmart
 import android.content.Context
 import com.mrcomanda.possmart.model.ItemFacturaDto
 import com.mrcomanda.possmart.network.AppPreferences
-
+import com.mrcomanda.possmart.model.Mesa
 object PrinterHelper {
 
     // Configuración general de entorno
@@ -144,5 +144,129 @@ object PrinterHelper {
                 android.util.Log.e("PrinterHelper", "Error en búsqueda y conexión: ${e.message}", e)
             }
         }.start()
+    }
+    fun imprimirPrecuentaPrinterIntegrada(
+        context: Context,
+        items: List<ItemFacturaDto>,
+        total: Double,
+        numeroMesa: Int,
+        leyendaExtra: String? = null
+    ) {
+        try {
+            val bitmap = crearBitmapPrecuentaPrinterIntegrada(
+                numeroMesa = numeroMesa,
+                items = items,
+                total = total,
+                leyendaExtra = leyendaExtra
+            )
+            enviarBitmapPrinterIntegrada(bitmap, "precuenta mesa $numeroMesa")
+        } catch (e: Exception) {
+            android.util.Log.e("MrComandaLog", "Error al imprimir pre-cuenta en PrinterIntegrada", e)
+        }
+    }
+
+    fun imprimirMesasAbiertasPrinterIntegrada(
+        context: Context,
+        mesas: List<Mesa>
+    ) {
+        try {
+            val bitmap = crearBitmapMesasAbiertasPrinterIntegrada(mesas)
+            enviarBitmapPrinterIntegrada(bitmap, "listado mesas abiertas (${mesas.size})")
+        } catch (e: Exception) {
+            android.util.Log.e("MrComandaLog", "Error al imprimir mesas abiertas en PrinterIntegrada", e)
+        }
+    }
+
+    private fun enviarBitmapPrinterIntegrada(bitmap: android.graphics.Bitmap, descripcion: String) {
+        android.util.Log.d("MrComandaLog", "Bitmap PrinterIntegrada listo [$descripcion]: ${bitmap.width}x${bitmap.height}")
+        // Ajustar con el método exacto decompilado de BitmapPrinter (Ctrl+N):
+        // MPManager.bitmapPrinter.print(bitmap) { response ->
+        //     android.util.Log.d("MrComandaLog", "<- Respuesta BitmapPrinter [$descripcion]: $response")
+        // }
+    }
+
+    private fun crearBitmapPrecuentaPrinterIntegrada(
+        numeroMesa: Int,
+        items: List<ItemFacturaDto>,
+        total: Double,
+        leyendaExtra: String?
+    ): android.graphics.Bitmap {
+        val paintTitulo = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.BLACK
+            textSize = 24f
+            typeface = android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD)
+        }
+        val paintTexto = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.BLACK
+            textSize = 18f
+            typeface = android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.NORMAL)
+        }
+
+        val alto = (180 + items.size * 44 + if (leyendaExtra != null) 36 else 0).coerceAtLeast(240)
+        val bitmap = android.graphics.Bitmap.createBitmap(384, alto, android.graphics.Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(bitmap).apply { drawColor(android.graphics.Color.WHITE) }
+
+        var y = 32f
+        canvas.drawText("MR. COMANDA - PRE-CUENTA", 12f, y, paintTitulo)
+        y += 32f
+        canvas.drawText("Mesa: $numeroMesa", 12f, y, paintTexto)
+        y += 28f
+        canvas.drawText("--------------------------------", 12f, y, paintTexto)
+        y += 28f
+
+        for (item in items) {
+            canvas.drawText("${item.cantidad}x ${item.descrip}".take(28), 12f, y, paintTexto)
+            y += 22f
+            canvas.drawText("   $${item.precio}", 12f, y, paintTexto)
+            y += 24f
+        }
+
+        canvas.drawText("--------------------------------", 12f, y, paintTexto)
+        y += 30f
+        canvas.drawText("TOTAL: $${total.toInt()}", 12f, y, paintTitulo)
+
+        if (!leyendaExtra.isNullOrBlank()) {
+            y += 32f
+            canvas.drawText(leyendaExtra.take(30), 12f, y, paintTexto)
+        }
+
+        return bitmap
+    }
+
+    private fun crearBitmapMesasAbiertasPrinterIntegrada(mesas: List<Mesa>): android.graphics.Bitmap {
+        val paintTitulo = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.BLACK
+            textSize = 22f
+            typeface = android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD)
+        }
+        val paintTexto = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.BLACK
+            textSize = 17f
+            typeface = android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.NORMAL)
+        }
+
+        val totalGeneral = mesas.sumOf { it.total }
+        val alto = (170 + mesas.size * 28).coerceAtLeast(220)
+        val bitmap = android.graphics.Bitmap.createBitmap(384, alto, android.graphics.Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(bitmap).apply { drawColor(android.graphics.Color.WHITE) }
+
+        var y = 32f
+        canvas.drawText("MESAS ABIERTAS", 12f, y, paintTitulo)
+        y += 30f
+        canvas.drawText("--------------------------------", 12f, y, paintTexto)
+        y += 26f
+
+        for (mesa in mesas) {
+            val marca = if (mesa.cerrando) "[COBRADA]" else "[ABIERTA]"
+            val linea = "M${mesa.mesa} $marca $${mesa.total.toInt()}"
+            canvas.drawText(linea.take(32), 12f, y, paintTexto)
+            y += 26f
+        }
+
+        canvas.drawText("--------------------------------", 12f, y, paintTexto)
+        y += 30f
+        canvas.drawText("CANT: ${mesas.size} | TOT: $${totalGeneral.toInt()}", 12f, y, paintTitulo)
+
+        return bitmap
     }
 }

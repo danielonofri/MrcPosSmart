@@ -1,12 +1,11 @@
 package com.mrcomanda.possmart.ui.theme
 
-import android.content.Intent
-import androidx.activity.compose.ManagedActivityResultLauncher
-import androidx.activity.result.ActivityResult
+import android.widget.Toast
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.sp
 import com.mrcomanda.possmart.model.Mesa
 import com.mrcomanda.possmart.network.MercadoPagoPaymentManager
@@ -16,22 +15,33 @@ import java.util.UUID
 fun BotonCobrar(
     mesa: Mesa,
     totalCalculado: Double,
-    cobroLauncher: ManagedActivityResultLauncher<Intent, ActivityResult>,
+    onAprobado: (paymentId: String) -> Unit,
+    onRechazadoOMas: (motivo: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    //val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    android.util.Log.d(
+        "MrComandaLog",
+        "Componiendo BotonCobrar | Mesa: ${mesa.mesa} | cerrando=${mesa.cerrando} | total=$totalCalculado"
+    )
 
     Button(
         onClick = {
             val guidReferencia = UUID.randomUUID().toString()
-            android.util.Log.d("MrComandaLog", "-> [BotonCobrar] Clic detectado | Mesa: ${mesa.mesa} | Monto: $$totalCalculado | Ref (GUID): $guidReferencia")
-            android.util.Log.d("MrComandaLog", "-> Iniciando cobro nativo con SDK | Mesa: ${mesa.mesa} | Monto: $$totalCalculado | Ref (GUID): $guidReferencia")
+            android.util.Log.d(
+                "MrComandaLog",
+                "-> [BotonCobrar] Clic | Mesa: ${mesa.mesa} | Monto: $$totalCalculado | Ref: $guidReferencia"
+            )
 
-            // Flujo nativo directo con la terminal enlazada mediante el SDK
             MercadoPagoPaymentManager.iniciarCobro(
-                launcher = cobroLauncher,
                 monto = totalCalculado,
-                externalReference = guidReferencia
+                externalReference = guidReferencia,
+                onAprobado = onAprobado,
+                onRechazadoOMas = { motivo ->
+                    Toast.makeText(context, motivo, Toast.LENGTH_LONG).show()
+                    onRechazadoOMas(motivo)
+                }
             )
         },
         modifier = modifier,
