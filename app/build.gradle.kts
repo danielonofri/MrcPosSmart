@@ -2,7 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
 }
-
+val appVersionName = "1.0.1"
+val appVersionCode = 1
 android {
     namespace = "com.mrcomanda.possmart"
     compileSdk {
@@ -13,8 +14,8 @@ android {
         applicationId = "com.mrcomanda.possmart"
         minSdk = 31
         targetSdk = 37
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -34,6 +35,7 @@ android {
         compose = true
     }
 }
+base.archivesName.set("MrComandaPosSmart-v$appVersionName")
 
 dependencies {
     implementation(platform(libs.androidx.compose.bom))
